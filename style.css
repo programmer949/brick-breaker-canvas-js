@@ -17,9 +17,17 @@ body {
 canvas {
     background-color: #0d011a;
     border: 1px solid white;
+    cursor: pointer;
 }
-
 
 .started {
-    padding: 12px;
+    padding: 16px;
 }
+
+.message {
+    display: none;
+    position: absolute;
+    font-family: Consolas;
+    color: white;
+}
+

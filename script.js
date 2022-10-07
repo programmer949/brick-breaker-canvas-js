@@ -3,65 +3,55 @@ const context = canvas.getContext("2d");
 const body = document.body;
 const width = canvas.width;
 const height = canvas.height;
-const hitSound = new Audio();
-const ballCordinates = { x: width / 2 - 60, y: height / 2 + 50 };
-const ballVelocity = { x: 4, y: 6 };
+const msgStart = document.querySelector(".start");
+const msgWin = document.querySelector(".win");
+const msgLose = document.querySelector(".lose");
+const hit = new Audio("./assets/sfx/hit.wav");
+const ball = { x: width / 2 - 60, y: height / 2 + 50, dx: 4, dy: 6, rad: 10 };
 const bricks = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-    [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-    [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
-const paddle = { x: width / 2 - 60, y: height - 30, w: 120, h: 20 };
-let isPaused = true;
+const paddle = { x: width / 2 - 60, y: height - 30, w: 120, h: 20, speed: 20 };
+let paused = true;
 let lives = 3;
-let padding = 5;
+let space = 5;
 let won = false;
 let lost = false;
 
-hitSound.src = "./assets/sfx/hit.wav";
-
-window.addEventListener("load", () => {
-    if (isPaused) {
-        context.fillStyle = "black";
-        context.fillRect(0, 0, width, height);
-        context.fillStyle = "#2bb8f1";
-        context.font = "32px consolas";
-        context.fillText(
-            "Press enter key or click here.",
-            width / 12,
-            height / 2,
-            width - 100
-        );
-    }
-});
-
-window.addEventListener("resize", () => location.reload());
+window.addEventListener("load", () =>
+    paused ? (msgStart.style.display = "block") : null
+);
 
 window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft" || e.key === "Left") {
-        paddle.x -= 20;
+        paddle.x -= paddle.speed;
     } else if (e.key === "ArrowRight" || e.key === "Right") {
-        paddle.x += 20;
-    } else if (
-        isPaused &&
-        won == false &&
-        lost === false &&
-        e.key === "Enter"
-    ) {
-        isPaused = false;
+        paddle.x += paddle.speed;
+    } else if (paused && won == false && lost === false && e.key === "Enter") {
+        msgStart.style.display = "none";
+        paused = false;
         canvas.className = "started";
     }
 });
 
 canvas.addEventListener("click", () => {
-    if (isPaused && won == false && lost === false) {
-        isPaused = false;
+    if (paused && won == false && lost === false) {
+        msgStart.style.display = "none";
+        paused = false;
         canvas.className = "started";
+    }
+});
+
+body.addEventListener("mousemove", (e) => {
+    if (!paused) {
+        if (e.movementX < 200) return (paddle.x += e.movementX);
+        else if (e.movementX > 200) return (paddle.x -= e.movementX);
     }
 });
 
@@ -69,32 +59,35 @@ const clear = () => context.clearRect(0, 0, width, height);
 
 const drawBricks = () => {
     context.fillStyle = "#cd4b1d";
-    bricks.forEach((brick, index) => {
-        for (let i = 0; i < brick.length; i++) {
-            if (brick[i] === 1) {
-                context.fillRect(
-                    i * 60 + padding,
-                    index * 30 + padding,
-                    50,
-                    20
-                );
-            }
-            if (
-                ballCordinates.y <= index * 30 + padding + 40 &&
-                ballCordinates.x + 10 >= i * 60 + padding &&
-                ballCordinates.x <= i * 60 + 50 + padding
-            ) {
-                brick[i] === 1 ? (ballVelocity.y = -ballVelocity.y) : null;
-                brick[i] === 1 ? hitSound.play() : null;
-                brick[i] = 0;
+    for (let i = 0; i < bricks.length; i++) {
+        for (let j = 0; j < bricks[i].length; j++) {
+            if (bricks[i][j] === 1) {
+                context.fillRect(j * 60 + space, i * 30 + space, 50, 20);
+                const ballLeft = ball.x;
+                const ballTop = ball.y;
+                const ballRight = ball.x + ball.rad;
+                const ballBottom = ball.y + ball.rad;
+                const brickTop = i * 30 + 40;
+                const brickLeft = j * 60;
+                const brickRight = j * 60 + 60;
+                if (
+                    ballTop <= brickTop &&
+                    ballRight >= brickLeft &&
+                    ballLeft <= brickRight &&
+                    ballBottom <= brickTop
+                ) {
+                    ball.dy = -ball.dy;
+                    hit.play();
+                    bricks[i][j] = 0;
+                }
             }
         }
-    });
+    }
 };
 
 const drawBall = () => {
     context.beginPath();
-    context.arc(ballCordinates.x, ballCordinates.y, 10, 0, Math.PI * 2, true);
+    context.arc(ball.x, ball.y, ball.rad, 0, Math.PI * 2, false);
     context.closePath();
     context.fillStyle = "#ff0";
     context.fill();
@@ -106,44 +99,45 @@ const drawPaddle = () => {
 };
 
 const move = () => {
-    ballCordinates.y += ballVelocity.y;
-    ballCordinates.x += ballVelocity.x;
-    ballCordinates.x = Math.floor(ballCordinates.x);
-    ballCordinates.y = Math.floor(ballCordinates.y);
-    ballVelocity.x = Math.floor(ballVelocity.x);
-    ballVelocity.y = Math.floor(ballVelocity.y);
+    ball.y += ball.dy;
+    ball.x += ball.dx;
+    ball.x = Math.floor(ball.x);
+    ball.y = Math.floor(ball.y);
+    ball.dx = Math.floor(ball.dx);
+    ball.dy = Math.floor(ball.dy);
 };
 
 const collisions = () => {
-    const paddleTop = paddle.y;
-    const ballBottom = ballCordinates.y + 10;
-    const ballLeft = ballCordinates.x;
-    const ballRight = ballCordinates.x + 10;
+    const ballLeft = ball.x;
+    const ballRight = ball.x + ball.rad;
+    const ballBottom = ball.y + ball.rad;
     const paddleLeft = paddle.x;
+    const paddleTop = paddle.y;
     const paddleRight = paddle.x + paddle.w;
-    if (ballCordinates.y < 10) {
-        ballVelocity.y = -ballVelocity.y;
-        hitSound.play();
-    } else if (ballBottom > paddleTop + 20) {
-        ballVelocity.x = 4;
-        ballVelocity.y = 6;
-        ballCordinates.x = width / 2 - 200;
-        ballCordinates.y = height / 2 + 50;
+    if (ball.y <= ball.rad * 2) {
+        ball.dy = -ball.dy;
+        hit.play();
+    } else if (ballBottom >= paddleTop + 20) {
+        ball.dx = 4;
+        ball.dy = 6;
+        ball.x = paddle.x;
+        ball.y = paddleTop - ball.rad * 2;
         lives--;
-    } else if (ballCordinates.x < 10 || ballCordinates.x > width - 10) {
-        ballVelocity.x = -ballVelocity.x;
-        hitSound.play();
-    } else if (paddle.x < 0) {
-        paddle.x = 6;
-    } else if (paddle.x > width - paddle.w) {
-        paddle.x = width - paddle.w;
+    } else if (ball.x <= ball.rad * 2 || ball.x >= width - ball.rad * 2) {
+        ball.dx = -ball.dx;
+        hit.play();
+    } else if (paddle.x <= 0) {
+        paddle.x = 20;
+    } else if (paddle.x >= width - paddle.w) {
+        paddle.x = width - paddle.w - 20;
     } else if (
         ballBottom >= paddleTop &&
         ballRight >= paddleLeft &&
         ballLeft <= paddleRight
     ) {
-        ballVelocity.y = -ballVelocity.y;
-        hitSound.play();
+        ball.y -= ball.rad;
+        ball.dy = -ball.dy;
+        hit.play();
     }
 };
 
@@ -153,29 +147,28 @@ const drawLives = () => {
     context.fillText(`Lives: ${lives}`, 0, height, 100);
 };
 
+const reload = () => setTimeout(() => location.reload(), 500);
+
 const checkState = () => {
     if (
         bricks.every((brickArray) => brickArray.every((brick) => brick === 0))
     ) {
         won = true;
-        setTimeout(() => {
-            context.clearRect(0, 0, width, height);
-            context.fillStyle = "white";
-            context.font = "30px Tahoma";
-            context.fillText("You Win!", 250, height / 2, 300);
-            isPaused = true;
-        }, 100);
+        paused = true;
+        clear();
+        msgWin.style.display = "block";
+        reload();
     } else if (lives === 0) {
         lost = true;
-        setTimeout(() => {
-            isPaused = true;
-            location.reload();
-        }, 100);
+        paused = true;
+        clear();
+        msgLose.style.display = "block";
+        reload();
     }
 };
 
 const mainLoop = () => {
-    if (!isPaused) {
+    if (!paused) {
         clear();
         move();
         collisions();
