@@ -1,12 +1,7 @@
 const canvas = document.querySelector("canvas");
 const context = canvas.getContext("2d");
-const body = document.body;
 const width = canvas.width;
 const height = canvas.height;
-const msgStart = document.querySelector(".start");
-const msgWin = document.querySelector(".win");
-const msgLose = document.querySelector(".lose");
-const hit = new Audio("./assets/sfx/hit.wav");
 const ball = { x: width / 2 - 60, y: height / 2 + 50, dx: 4, dy: 6, rad: 10 };
 const bricks = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -17,41 +12,62 @@ const bricks = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
-const paddle = { x: width / 2 - 60, y: height - 30, w: 120, h: 20, speed: 20 };
-let paused = true;
-let lives = 3;
-let space = 5;
-let won = false;
-let lost = false;
+const player = {
+    x: width / 2 - 60,
+    y: height - 30,
+    width: 120,
+    height: 20,
+    speed: 0,
+    lives: 3,
+    won: false,
+    lost: false,
+};
+const hit = new Audio("./sfx/hit.wav");
+const body = document.body;
+const game = { space: 5, running: false };
 
-window.addEventListener("load", () =>
-    paused ? (msgStart.style.display = "block") : null
-);
+window.addEventListener("load", () => {
+    if (!game.running) {
+        context.fillStyle = "white";
+        context.font = "28px consolas";
+        context.fillText("Press enter key or click here", 73.818, height / 2);
+    }
+});
 
 window.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowLeft" || e.key === "Left") {
-        paddle.x -= paddle.speed;
-    } else if (e.key === "ArrowRight" || e.key === "Right") {
-        paddle.x += paddle.speed;
-    } else if (paused && won == false && lost === false && e.key === "Enter") {
-        msgStart.style.display = "none";
-        paused = false;
-        canvas.className = "started";
+    if (e.key === "ArrowLeft" || e.key === "Left") player.speed = -8;
+    if (e.key === "ArrowRight" || e.key === "Right") player.speed = 8;
+    if (
+        !game.running &&
+        player.won == false &&
+        player.lost === false &&
+        e.key === "Enter"
+    )
+        game.running = true;
+});
+
+window.addEventListener("keyup", (e) => {
+    if (
+        e.key === "ArrowLeft" ||
+        e.key === "Left" ||
+        e.key === "ArrowRight" ||
+        e.key === "Right"
+    ) {
+        player.speed = 0;
     }
 });
 
 canvas.addEventListener("click", () => {
-    if (paused && won == false && lost === false) {
-        msgStart.style.display = "none";
-        paused = false;
+    if (!game.running && player.won == false && player.lost === false) {
+        game.running = true;
         canvas.className = "started";
     }
 });
 
 body.addEventListener("mousemove", (e) => {
-    if (!paused) {
-        if (e.movementX < 200) return (paddle.x += e.movementX);
-        else if (e.movementX > 200) return (paddle.x -= e.movementX);
+    if (game.running) {
+        x = e.clientX - canvas.getBoundingClientRect().x;
+        player.x = x - player.width / 2 - 15;
     }
 });
 
@@ -62,7 +78,12 @@ const drawBricks = () => {
     for (let i = 0; i < bricks.length; i++) {
         for (let j = 0; j < bricks[i].length; j++) {
             if (bricks[i][j] === 1) {
-                context.fillRect(j * 60 + space, i * 30 + space, 50, 20);
+                context.fillRect(
+                    j * 60 + game.space,
+                    i * 30 + game.space,
+                    50,
+                    20
+                );
                 const ballLeft = ball.x;
                 const ballTop = ball.y;
                 const ballRight = ball.x + ball.rad;
@@ -95,7 +116,7 @@ const drawBall = () => {
 
 const drawPaddle = () => {
     context.fillStyle = "#2bb8f1";
-    context.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    context.fillRect(player.x, player.y, player.width, player.height);
 };
 
 const move = () => {
@@ -105,32 +126,40 @@ const move = () => {
     ball.y = Math.floor(ball.y);
     ball.dx = Math.floor(ball.dx);
     ball.dy = Math.floor(ball.dy);
+    player.x += player.speed;
 };
 
 const collisions = () => {
     const ballLeft = ball.x;
     const ballRight = ball.x + ball.rad;
     const ballBottom = ball.y + ball.rad;
-    const paddleLeft = paddle.x;
-    const paddleTop = paddle.y;
-    const paddleRight = paddle.x + paddle.w;
+    const paddleLeft = player.x;
+    const paddleTop = player.y;
+    const paddleRight = player.x + player.width;
     if (ball.y <= ball.rad * 2) {
         ball.dy = -ball.dy;
         hit.play();
-    } else if (ballBottom >= paddleTop + 20) {
+    }
+    if (ballBottom >= paddleTop + 20) {
         ball.dx = 4;
         ball.dy = 6;
-        ball.x = paddle.x;
+        ball.x = player.x;
         ball.y = paddleTop - ball.rad * 2;
-        lives--;
-    } else if (ball.x <= ball.rad * 2 || ball.x >= width - ball.rad * 2) {
+        player.lives--;
+    }
+    if (ball.x <= ball.rad * 2 || ball.x >= width - ball.rad * 2) {
         ball.dx = -ball.dx;
         hit.play();
-    } else if (paddle.x <= 0) {
-        paddle.x = 20;
-    } else if (paddle.x >= width - paddle.w) {
-        paddle.x = width - paddle.w - 20;
-    } else if (
+    }
+    if (player.x <= 20) {
+        player.speed = 0;
+        player.x = 21;
+    }
+    if (player.x >= width - player.width - 20) {
+        player.speed = 0;
+        player.x = width - player.width - 21;
+    }
+    if (
         ballBottom >= paddleTop &&
         ballRight >= paddleLeft &&
         ballLeft <= paddleRight
@@ -144,7 +173,7 @@ const collisions = () => {
 const drawLives = () => {
     context.fillStyle = "white";
     context.font = "16px consolas";
-    context.fillText(`Lives: ${lives}`, 0, height, 100);
+    context.fillText(`Lives: ${player.lives}`, 0, height, 100);
 };
 
 const reload = () => setTimeout(() => location.reload(), 500);
@@ -153,28 +182,33 @@ const checkState = () => {
     if (
         bricks.every((brickArray) => brickArray.every((brick) => brick === 0))
     ) {
-        won = true;
-        paused = true;
+        player.won = true;
+        game.running = false;
         clear();
-        msgWin.style.display = "block";
+        context.fillStyle = "white";
+        context.font = "28px consolas";
+        context.fillText("You Win!", width / 2 - 56, height / 2);
         reload();
-    } else if (lives === 0) {
-        lost = true;
-        paused = true;
+    }
+    if (player.lives === 0) {
+        player.lost = true;
+        game.running = false;
         clear();
-        msgLose.style.display = "block";
+        context.fillStyle = "white";
+        context.font = "28px consolas";
+        context.fillText("You Lose!", width / 2 - 63, height / 2);
         reload();
     }
 };
 
 const mainLoop = () => {
-    if (!paused) {
+    if (game.running) {
         clear();
-        move();
-        collisions();
         drawBricks();
         drawBall();
         drawPaddle();
+        move();
+        collisions();
         drawLives();
         checkState();
     }
